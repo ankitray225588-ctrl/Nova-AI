@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 void main() {
   runApp(const NovaAI());
@@ -26,18 +27,40 @@ class NovaHome extends StatefulWidget {
 }
 
 class _NovaHomeState extends State<NovaHome> {
-  final TextEditingController controller = TextEditingController();
-  final List<String> messages = [];
+  final stt.SpeechToText speech = stt.SpeechToText();
 
-  void sendMessage() {
-    final text = controller.text.trim();
+  bool listening = false;
+  String text = "Press the microphone and speak";
 
-    if (text.isEmpty) return;
+  Future<void> startListening() async {
+    final available = await speech.initialize();
+
+    if (!available) {
+      setState(() {
+        text = "Microphone is not available";
+      });
+      return;
+    }
 
     setState(() {
-      messages.add("You: $text");
-      messages.add("Nova: I'm listening 👋");
-      controller.clear();
+      listening = true;
+      text = "Listening...";
+    });
+
+    await speech.listen(
+      onResult: (result) {
+        setState(() {
+          text = result.recognizedWords;
+        });
+      },
+    );
+  }
+
+  Future<void> stopListening() async {
+    await speech.stop();
+
+    setState(() {
+      listening = false;
     });
   }
 
@@ -53,56 +76,29 @@ class _NovaHomeState extends State<NovaHome> {
       body: Column(
         children: [
           Expanded(
-            child: messages.isEmpty
-                ? const Center(
-                    child: Text(
-                      "Hey, I'm Nova AI 🤖\n\nHow can I help you?",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  )
-                : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: Text(
-                          messages[index],
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                      );
-                    },
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  text,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
+                ),
+              ),
+            ),
           ),
-
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    decoration: InputDecoration(
-                      hintText: "Talk to Nova...",
-                      filled: true,
-                      fillColor: const Color(0xFF18213A),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                FloatingActionButton(
-                  onPressed: sendMessage,
-                  child: const Icon(Icons.mic),
-                ),
-              ],
+            padding: const EdgeInsets.only(bottom: 40),
+            child: FloatingActionButton.large(
+              onPressed:
+                  listening ? stopListening : startListening,
+              child: Icon(
+                listening ? Icons.stop : Icons.mic,
+                size: 36,
+              ),
             ),
           ),
         ],
