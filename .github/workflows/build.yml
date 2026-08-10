@@ -23,7 +23,23 @@ jobs:
       - name: Add microphone permission
         run: |
           sed -i '/<manifest /a\    <uses-permission android:name="android.permission.RECORD_AUDIO"/>' android/app/src/main/AndroidManifest.xml
-
+      - name: Add TTS configuration
+        run: |
+          python3 - <<'PY'
+          path = "android/app/src/main/AndroidManifest.xml"
+          text = open(path).read()
+          text = text.replace(
+              "<application",
+              """<queries>
+                  <intent>
+                      <action android:name="android.intent.action.TTS_SERVICE"/>
+                  </intent>
+              </queries>
+              <application""",
+              1
+          )
+          open(path, "w").write(text)
+          PY
       - name: Get dependencies
         run: flutter pub get
 
